@@ -1,3 +1,20 @@
+# Dependencies and build output
 node_modules/
 dist/
+out/
+build/
+
+# Logs and temp files
 *.log
+*.tmp
+*.temp
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Coverage and caches
+coverage/
+.cache/

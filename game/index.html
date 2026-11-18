@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>SOLCOSTA — Streets of Gold</title>
+<style>
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+    background: #1a120b; font-family: 'Segoe UI', Arial, Helvetica, sans-serif; }
+  #app { position: fixed; inset: 0; }
+  canvas.game { display: block; width: 100%; height: 100%; }
+  .hud { position: absolute; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.8);
+    user-select: none; pointer-events: none; z-index: 5; }
+  #healthBox { top: 14px; left: 14px; }
+  #healthBarWrap { width: 210px; height: 14px; background: rgba(0,0,0,.55);
+    border: 1px solid rgba(255,255,255,.5); border-radius: 3px; overflow: hidden; }
+  #healthBar { height: 100%; width: 100%; background: linear-gradient(90deg,#ff5a3c,#ffb03c); }
+  #money { margin-top: 6px; font-size: 22px; font-weight: 700; color: #7dff8a; }
+  #ammo { margin-top: 2px; font-size: 14px; font-weight: 600; color: #ffe9a8; }
+  #wanted { top: 14px; right: 16px; font-size: 30px; letter-spacing: 2px; color: #ffd23c; }
+  #wanted .dim { color: rgba(255,255,255,.28); }
+  #objective { left: 50%; transform: translateX(-50%); top: 12px; text-align: center;
+    font-size: 17px; font-weight: 600; background: rgba(0,0,0,.45); padding: 7px 16px;
+    border-radius: 6px; max-width: 60%; }
+  #objective .sub { display: block; font-size: 13px; font-weight: 400; color: #ffd98a; }
+  #minimapWrap { left: 14px; bottom: 14px; }
+  #minimap { border: 2px solid rgba(255,255,255,.55); border-radius: 50%;
+    background: #0d1a12; box-shadow: 0 0 12px rgba(0,0,0,.6); }
+  #speedo { right: 16px; bottom: 14px; text-align: right; font-size: 15px; font-weight: 600; }
+  #speedo .big { font-size: 34px; font-weight: 800; line-height: 1; }
+  #toast { left: 50%; transform: translateX(-50%); bottom: 120px; text-align: center;
+    font-size: 21px; font-weight: 700; color: #ffe9a8; opacity: 0; transition: opacity .3s; }
+  #hint { left: 50%; transform: translateX(-50%); bottom: 18px; text-align: center;
+    font-size: 13px; color: rgba(255,255,255,.75); background: rgba(0,0,0,.35);
+    padding: 4px 12px; border-radius: 4px; }
+  #crosshair { left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px;
+    display: none; }
+  #crosshair::before, #crosshair::after { content: ''; position: absolute; background: #fff;
+    box-shadow: 0 0 3px #000; }
+  #crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
+  #crosshair::after { left: 0; top: 8px; width: 18px; height: 2px; }
+  .overlay { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center; color: #fff;
+    background: linear-gradient(180deg, rgba(20,8,2,.82), rgba(40,16,4,.88)); }
+  .overlay h1 { font-size: 64px; margin: 0; letter-spacing: 6px; color: #ffb03c;
+    text-shadow: 0 3px 0 #a33c00, 0 6px 18px rgba(0,0,0,.7); }
+  .overlay h2 { font-size: 20px; margin: 6px 0 18px; color: #ffe9a8; font-weight: 400;
+    letter-spacing: 3px; }
+  .overlay p { max-width: 560px; font-size: 15px; line-height: 1.55; color: #f3e2c8; margin: 4px 0; }
+  .overlay .keys { font-size: 13px; color: #cfd8ff; margin-top: 14px; line-height: 1.8; }
+  .overlay .keys b { color: #fff; background: rgba(255,255,255,.16); border-radius: 3px;
+    padding: 1px 7px; margin: 0 2px; }
+  .bigbtn { pointer-events: auto; cursor: pointer; margin-top: 22px; font-size: 20px;
+    font-weight: 800; letter-spacing: 2px; color: #2a1500; background: linear-gradient(180deg,#ffd23c,#ff9a1f);
+    border: 0; border-radius: 8px; padding: 14px 44px; box-shadow: 0 4px 0 #a33c00, 0 8px 22px rgba(0,0,0,.5); }
+  .bigbtn:hover { filter: brightness(1.08); }
+  .bigbtn:active { transform: translateY(2px); box-shadow: 0 2px 0 #a33c00; }
+  .hidden { display: none !important; }
+  #missionList { text-align: left; font-size: 14px; line-height: 1.9; color: #ffe9a8; }
+  #missionList .done { color: #7dff8a; }
+  #missionList .now { color: #ffd23c; font-weight: 700; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<div id="app"></div>
+<div class="hud" id="healthBox">
+  <div id="healthBarWrap"><div id="healthBar"></div></div>
+  <div id="money">$0</div>
+  <div id="ammo"></div>
+</div>
+<div class="hud" id="wanted"></div>
+<div class="hud" id="objective"></div>
+<div class="hud" id="minimapWrap"><canvas id="minimap" width="180" height="180"></canvas></div>
+<div class="hud" id="speedo"></div>
+<div class="hud" id="toast"></div>
+<div class="hud" id="hint"></div>
+<div class="hud" id="crosshair"></div>
+
+<div class="overlay" id="menu">
+  <h1>SOLCOSTA</h1>
+  <h2>STREETS OF GOLD</h2>
+  <p>You are <b>Milo Reyes</b>, a getaway driver back in Solcosta with a debt to the fixer
+  <b>Vera Kross</b> and a city that owes you nothing. Steal cars, outrun the Solcosta PD,
+  run five jobs for Vera, and take the gold sports car of kingpin <b>Silas Vane</b> —
+  then the city is yours.</p>
+  <div id="missionList"></div>
+  <div class="keys">
+    <b>W A S D</b> move / drive &nbsp; <b>Shift</b> sprint / handbrake &nbsp; <b>Space</b> jump<br>
+    <b>E</b> steal / enter car &nbsp; <b>F</b> punch &nbsp; <b>Click</b> shoot &nbsp; <b>1 / 2</b> fists / pistol<br>
+    <b>H</b> horn &nbsp; <b>Esc</b> pause &nbsp; drag mouse to look around
+  </div>
+  <button class="bigbtn" id="startBtn">START ENGINE</button>
+</div>
+
+<div class="overlay hidden" id="pauseMenu">
+  <h1 style="font-size:42px">PAUSED</h1>
+  <p>Solcosta waits for no one. Well — except right now.</p>
+  <button class="bigbtn" id="resumeBtn">RESUME</button>
+  <button class="bigbtn" id="restartBtn" style="background:linear-gradient(180deg,#e8e8e8,#b9b9b9)">RESTART DAY</button>
+</div>
+
+<div class="overlay hidden" id="endScreen">
+  <h1 id="endTitle" style="font-size:42px">BUSTED</h1>
+  <p id="endText"></p>
+  <button class="bigbtn" id="endBtn">BACK ON THE STREETS</button>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
